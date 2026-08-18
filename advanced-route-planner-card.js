@@ -1,12 +1,6 @@
 class AdvancedRoutePlannerCard extends HTMLElement {
   setConfig(config) {
-    const required = [
-      "presence_entity",
-      "to_work_entity",
-      "from_work_entity",
-      "to_nursery_entity",
-      "from_nursery_entity"
-    ];
+    const required = ["presence_entity", "to_work_entity", "to_nursery_entity"];
 
     const missing = required.filter((key) => !config[key]);
     if (missing.length > 0) {
@@ -29,7 +23,7 @@ class AdvancedRoutePlannerCard extends HTMLElement {
     }
 
     const presenceState = (hass.states[this.config.presence_entity]?.state || "").toLowerCase();
-    const workZone = (this.config.work_zone || "work").toLowerCase();
+    const workZone = this._getWorkZoneName();
     const isAtWork = presenceState === workZone;
 
     const primaryEntityId = isAtWork
@@ -37,39 +31,22 @@ class AdvancedRoutePlannerCard extends HTMLElement {
       : this.config.to_work_entity;
 
     const primaryLabel = isAtWork
-      ? this.config.to_nursery_label || "Home → Nursery"
-      : this.config.to_work_label || "Home → Work";
-
-    const rows = [
-      this._routeRow(this.config.to_work_entity, this.config.to_work_label || "Home → Work"),
-      this._routeRow(this.config.from_work_entity, this.config.from_work_label || "Work → Home"),
-      this._routeRow(this.config.to_nursery_entity, this.config.to_nursery_label || "Home → Nursery"),
-      this._routeRow(this.config.from_nursery_entity, this.config.from_nursery_label || "Nursery → Home")
-    ].join("");
+      ? this.config.to_nursery_label || "Nick → Nursery"
+      : this.config.to_work_label || "Nick → Work";
 
     this.content.innerHTML = `
-      <div style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--divider-color);">
-        ${this._primaryRoute(primaryEntityId, primaryLabel)}
-      </div>
-      <div>${rows}</div>
-    `;
-  }
-
-  _routeRow(entityId, label) {
-    const stateObj = this._hass.states[entityId];
-    const duration = this._formatDuration(stateObj?.state);
-    const route = this._escapeHtml(stateObj?.attributes?.route || "Route details unavailable");
-    const safeLabel = this._escapeHtml(label);
-
-    return `
-      <div style="margin-bottom: 12px;">
-        <div style="font-weight: 600;">${safeLabel}: ${duration}</div>
-        <div style="font-size: 0.9em; color: var(--secondary-text-color);">${route}</div>
-      </div>
+      <div>${this._primaryRoute(primaryEntityId, primaryLabel)}</div>
     `;
   }
 
   _primaryRoute(entityId, label) {
+    if (!entityId) {
+      return `
+        <div style="font-size: 1.05em; font-weight: 700; margin-bottom: 4px;">${this._escapeHtml(label)}</div>
+        <div style="font-size: 0.95em; color: var(--secondary-text-color);">Route entity not configured</div>
+      `;
+    }
+
     const stateObj = this._hass.states[entityId];
     const duration = this._formatDuration(stateObj?.state);
     const route = this._escapeHtml(stateObj?.attributes?.route || "Route details unavailable");
@@ -99,9 +76,123 @@ class AdvancedRoutePlannerCard extends HTMLElement {
       .replaceAll("'", "&#39;");
   }
 
-  getCardSize() {
-    return 4;
+  _getWorkZoneName() {
+    const zoneEntityId = this.config.work_zone_entity;
+    if (zoneEntityId && zoneEntityId.startsWith("zone.")) {
+      return zoneEntityId.split(".", 2)[1].toLowerCase();
+    }
+    return (this.config.work_zone || "work").toLowerCase();
   }
+
+  static async getConfigElement() {
+    return document.createElement("advanced-route-planner-card-editor");
+  }
+
+  static getStubConfig() {
+    return {
+      title: "Advanced Route Planner",
+      presence_entity: "",
+      work_zone_entity: "zone.work",
+      to_work_entity: "",
+      to_nursery_entity: "",
+      to_work_label: "Nick → Work",
+      to_nursery_label: "Nick → Nursery"
+    };
+  }
+
+  getCardSize() {
+    return 2;
+  }
+}
+
+class AdvancedRoutePlannerCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = { ...config };
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  _render() {
+    if (!this._hass || !this._config) {
+      return;
+    }
+
+    this.innerHTML = `
+      <div class="card-config">
+        <ha-textfield label="Title" data-config="title"></ha-textfield>
+        <ha-entity-picker label="Person entity" data-config="presence_entity"></ha-entity-picker>
+        <ha-entity-picker label="Work zone entity" data-config="work_zone_entity"></ha-entity-picker>
+        <ha-entity-picker label="Nick to work sensor" data-config="to_work_entity"></ha-entity-picker>
+        <ha-entity-picker label="Nick to nursery sensor" data-config="to_nursery_entity"></ha-entity-picker>
+        <ha-textfield label="Nick to work label" data-config="to_work_label"></ha-textfield>
+        <ha-textfield label="Nick to nursery label" data-config="to_nursery_label"></ha-textfield>
+      </div>
+    `;
+
+    this._bindEntityPicker("presence_entity", "person");
+    this._bindEntityPicker("work_zone_entity", "zone");
+    this._bindEntityPicker("to_work_entity", "sensor");
+    this._bindEntityPicker("to_nursery_entity", "sensor");
+    this._bindTextField("title");
+    this._bindTextField("to_work_label");
+    this._bindTextField("to_nursery_label");
+  }
+
+  _bindEntityPicker(key, domain) {
+    const field = this.querySelector(`ha-entity-picker[data-config="${key}"]`);
+    if (!field) {
+      return;
+    }
+
+    field.hass = this._hass;
+    field.includeDomains = [domain];
+    field.value = this._config[key] || "";
+    field.addEventListener("value-changed", this._onValueChanged);
+  }
+
+  _bindTextField(key) {
+    const field = this.querySelector(`ha-textfield[data-config="${key}"]`);
+    if (!field) {
+      return;
+    }
+
+    field.value = this._config[key] || "";
+    field.addEventListener("change", this._onValueChanged);
+  }
+
+  _onValueChanged = (event) => {
+    event.stopPropagation();
+    const key = event.target.dataset.config;
+    if (!key) {
+      return;
+    }
+
+    const value = event.detail?.value ?? event.target.value ?? "";
+    if ((this._config[key] || "") === value) {
+      return;
+    }
+
+    if (value === "") {
+      delete this._config[key];
+    } else {
+      this._config = {
+        ...this._config,
+        [key]: value
+      };
+    }
+
+    this.dispatchEvent(new CustomEvent("config-changed", {
+      detail: { config: this._config }
+    }));
+  };
+}
+
+if (!customElements.get("advanced-route-planner-card-editor")) {
+  customElements.define("advanced-route-planner-card-editor", AdvancedRoutePlannerCardEditor);
 }
 
 customElements.define("advanced-route-planner-card", AdvancedRoutePlannerCard);
@@ -110,5 +201,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "advanced-route-planner-card",
   name: "Advanced Route Planner",
-  description: "Shows Waze route durations and route plans between home, work, and nursery"
+  description: "Shows either Nick → Work or Nick → Nursery based on whether Nick is at work"
 });
