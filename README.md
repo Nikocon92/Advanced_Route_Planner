@@ -1,18 +1,14 @@
 # Advanced Route Planner
 
-Home Assistant Lovelace custom card to display Waze travel duration and route details for home/work/nursery trips.
+Home Assistant Lovelace custom card to display Waze travel duration and route details for work/nursery trips.
 
 ## What it does
 
 - Shows duration + route attribute from Waze entities.
-- Displays routes:
-  - Home → Work
-  - Work → Home
-  - Home → Nursery
-  - Nursery → Home
-- Automatically highlights:
-  - **Route to Work** when your presence entity is **not** at work
-  - **Route to Nursery** when your presence entity **is** at work
+- Shows only one route at a time:
+  - **To Nursery** when the selected person is at the selected work zone (for example `person.nick` at `zone.work`)
+  - **To Work** when the selected person is not at the selected work zone
+- Includes a visual Lovelace editor with selectable `person.*`, `zone.*`, and `sensor.*` entities.
 
 ## Installation
 
@@ -34,21 +30,23 @@ Home Assistant Lovelace custom card to display Waze travel duration and route de
 
 ## Lovelace usage
 
-Configure the card with your entities.
+Configure the card with your entities (YAML or visual editor).
 
 ```yaml
 type: custom:advanced-route-planner-card
 title: Commute Planner
-presence_entity: person.your_name
-work_zone: work
-to_work_entity: sensor.home_to_work
-from_work_entity: sensor.work_to_home
-to_nursery_entity: sensor.home_to_nursery
-from_nursery_entity: sensor.nursery_to_home
+presence_entity: person.nick
+work_zone_entity: zone.work
+to_work_entity: sensor.nick_to_work
+to_nursery_entity: sensor.nick_to_nursery
+to_work_label: Nick → Work
+to_nursery_label: Nick → Nursery
 ```
 
 ### Notes
 
-- `presence_entity` should be an entity whose state becomes `work` when you are at work (for example a `person.*` entity).
-- `work_zone` defaults to `work`.
+- `presence_entity` should be a `person.*` entity (for example `person.nick`).
+- `work_zone_entity` should be a `zone.*` entity (for example `zone.work`).  
+  The card compares `person` state to the selected zone name.
+- `work_zone` is still supported for backward compatibility and defaults to `work`.
 - The route text is read from each Waze entity's `route` attribute.
