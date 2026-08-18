@@ -31,8 +31,8 @@ class AdvancedRoutePlannerCard extends HTMLElement {
       : this.config.to_work_entity;
 
     const primaryLabel = isAtWork
-      ? this.config.to_nursery_label || "Nick → Nursery"
-      : this.config.to_work_label || "Nick → Work";
+      ? this.config.to_nursery_label || "Home → Nursery"
+      : this.config.to_work_label || "Home → Work";
 
     this.content.innerHTML = `
       <div>${this._primaryRoute(primaryEntityId, primaryLabel)}</div>
@@ -79,7 +79,7 @@ class AdvancedRoutePlannerCard extends HTMLElement {
   _getWorkZoneName() {
     const zoneEntityId = this.config.work_zone_entity;
     if (zoneEntityId && zoneEntityId.startsWith("zone.")) {
-      return zoneEntityId.split(".", 2)[1].toLowerCase();
+      return zoneEntityId.slice("zone.".length).toLowerCase();
     }
     return (this.config.work_zone || "work").toLowerCase();
   }
@@ -95,8 +95,8 @@ class AdvancedRoutePlannerCard extends HTMLElement {
       work_zone_entity: "zone.work",
       to_work_entity: "",
       to_nursery_entity: "",
-      to_work_label: "Nick → Work",
-      to_nursery_label: "Nick → Nursery"
+      to_work_label: "Home → Work",
+      to_nursery_label: "Home → Nursery"
     };
   }
 
@@ -108,11 +108,15 @@ class AdvancedRoutePlannerCard extends HTMLElement {
 class AdvancedRoutePlannerCardEditor extends HTMLElement {
   setConfig(config) {
     this._config = { ...config };
+    this._updateFieldValues();
     this._render();
   }
 
   set hass(hass) {
     this._hass = hass;
+    if (this._rendered) {
+      this._updateEntityPickerHass();
+    }
     this._render();
   }
 
@@ -121,15 +125,20 @@ class AdvancedRoutePlannerCardEditor extends HTMLElement {
       return;
     }
 
+    if (this._rendered) {
+      return;
+    }
+
+    this._rendered = true;
     this.innerHTML = `
       <div class="card-config">
         <ha-textfield label="Title" data-config="title"></ha-textfield>
         <ha-entity-picker label="Person entity" data-config="presence_entity"></ha-entity-picker>
         <ha-entity-picker label="Work zone entity" data-config="work_zone_entity"></ha-entity-picker>
-        <ha-entity-picker label="Nick to work sensor" data-config="to_work_entity"></ha-entity-picker>
-        <ha-entity-picker label="Nick to nursery sensor" data-config="to_nursery_entity"></ha-entity-picker>
-        <ha-textfield label="Nick to work label" data-config="to_work_label"></ha-textfield>
-        <ha-textfield label="Nick to nursery label" data-config="to_nursery_label"></ha-textfield>
+        <ha-entity-picker label="To work sensor" data-config="to_work_entity"></ha-entity-picker>
+        <ha-entity-picker label="To nursery sensor" data-config="to_nursery_entity"></ha-entity-picker>
+        <ha-textfield label="To work label" data-config="to_work_label"></ha-textfield>
+        <ha-textfield label="To nursery label" data-config="to_nursery_label"></ha-textfield>
       </div>
     `;
 
@@ -140,6 +149,39 @@ class AdvancedRoutePlannerCardEditor extends HTMLElement {
     this._bindTextField("title");
     this._bindTextField("to_work_label");
     this._bindTextField("to_nursery_label");
+  }
+
+  _updateEntityPickerHass() {
+    if (!this._rendered) {
+      return;
+    }
+
+    this.querySelectorAll("ha-entity-picker").forEach((field) => {
+      field.hass = this._hass;
+    });
+  }
+
+  _updateFieldValues() {
+    if (!this._rendered) {
+      return;
+    }
+
+    const keys = [
+      "title",
+      "presence_entity",
+      "work_zone_entity",
+      "to_work_entity",
+      "to_nursery_entity",
+      "to_work_label",
+      "to_nursery_label"
+    ];
+
+    keys.forEach((key) => {
+      const field = this.querySelector(`[data-config="${key}"]`);
+      if (field) {
+        field.value = this._config[key] || "";
+      }
+    });
   }
 
   _bindEntityPicker(key, domain) {
@@ -201,5 +243,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "advanced-route-planner-card",
   name: "Advanced Route Planner",
-  description: "Shows either Nick → Work or Nick → Nursery based on whether Nick is at work"
+  description: "Shows either the work or nursery route based on whether your person is at work"
 });

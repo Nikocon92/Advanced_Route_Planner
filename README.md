@@ -1,13 +1,13 @@
 # Advanced Route Planner
 
-Home Assistant Lovelace custom card to display Waze travel duration and route details for Nick's work/nursery trips.
+Home Assistant Lovelace custom card to display Waze travel duration and route details for work/nursery trips.
 
 ## What it does
 
 - Shows duration + route attribute from Waze entities.
 - Shows only one route at a time:
-  - **Nick → Nursery** when `person.nick` is at `zone.work`
-  - **Nick → Work** when `person.nick` is not at `zone.work`
+  - **To Nursery** when the selected person is at the selected work zone (for example `person.nick` at `zone.work`)
+  - **To Work** when the selected person is not at the selected work zone
 - Includes a visual Lovelace editor with selectable `person.*`, `zone.*`, and `sensor.*` entities.
 
 ## Installation
