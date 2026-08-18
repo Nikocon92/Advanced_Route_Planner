@@ -14,10 +14,27 @@ Home Assistant Lovelace custom card to display Waze travel duration and route de
   - **Route to Work** when your presence entity is **not** at work
   - **Route to Nursery** when your presence entity **is** at work
 
+## Installation
+
+### Via HACS (recommended)
+
+1. Open HACS in your Home Assistant instance.
+2. Go to **Frontend**.
+3. Click the **⋮** menu → **Custom repositories**.
+4. Add `https://github.com/Nikocon92/Advanced_Route_Planner` with category **Dashboard**.
+5. Search for **Advanced Route Planner** and click **Download**.
+6. Reload your browser.
+
+### Manual
+
+1. Copy `advanced-route-planner-card.js` to your `www/` folder.
+2. Add it as a dashboard resource:
+   - **URL:** `/local/advanced-route-planner-card.js`
+   - **Type:** JavaScript module
+
 ## Lovelace usage
 
-1. Add `advanced-route-planner-card.js` as a dashboard resource.
-2. Configure the card with your entities.
+Configure the card with your entities.
 
 ```yaml
 type: custom:advanced-route-planner-card
